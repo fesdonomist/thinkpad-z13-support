@@ -8,10 +8,11 @@ TuneD profiles for a ThinkPad Z13 Gen 1 AMD 6850U.
 AMDGPU ABM/backlight reduction is kept off with `panel_power_savings=0` and
 `amdgpu.abmlevel=0`.
 
-The bundled `ppd.conf` maps battery PPD modes to:
+The bundled `ppd.conf` maps PPD modes to:
 
 - `balanced` -> `z13-balanced`
 - `power-saver` -> `z13-power-saver`
+- `performance` -> `throughput-performance`
 
 It also includes `ehpsctl`, a small replacement for the ELAN haptic touchpad
 settings loader. The installer builds it, writes a default

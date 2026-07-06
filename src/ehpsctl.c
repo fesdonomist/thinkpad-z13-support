@@ -398,6 +398,11 @@ static void set_default_config(struct ehps_config *cfg)
     config_to_raw(cfg, cfg->raw);
 }
 
+static bool is_help_arg(const char *arg)
+{
+    return strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0;
+}
+
 static void usage(FILE *out)
 {
     fprintf(out,
@@ -405,6 +410,7 @@ static void usage(FILE *out)
             "  ehpsctl [apply] [--config PATH] [-v]\n"
             "  ehpsctl show [--config PATH]\n"
             "  ehpsctl set [options] [--config PATH] [--no-apply] [-v]\n"
+            "  ehpsctl help | --help | -h\n"
             "\n"
             "options for set:\n"
             "  --haptic-feedback on|off\n"
@@ -576,6 +582,11 @@ int main(int argc, char **argv)
     int command_index = 1;
     bool apply_after_set = true;
 
+    if (argc > 1 && is_help_arg(argv[1])) {
+        usage(stdout);
+        return 0;
+    }
+
     if (argc > 1 &&
         (strcmp(argv[1], "apply") == 0 || strcmp(argv[1], "show") == 0 ||
          strcmp(argv[1], "set") == 0 || strcmp(argv[1], "help") == 0)) {
@@ -586,6 +597,9 @@ int main(int argc, char **argv)
     for (int i = command_index; i < argc; i++) {
         if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
             verbose = 1;
+        } else if (is_help_arg(argv[i])) {
+            usage(stdout);
+            return 0;
         } else if (strcmp(argv[i], "--config") == 0 || strcmp(argv[i], "-c") == 0) {
             if (i + 1 >= argc) {
                 fprintf(stderr, "%s needs a path\n", argv[i]);

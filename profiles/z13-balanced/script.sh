@@ -5,7 +5,15 @@ set -u
 
 TAG="z13-balanced"
 
-log() {
+info() {
+    printf '%s: %s\n' "$TAG" "$*"
+}
+
+warn() {
+    printf '%s: %s\n' "$TAG" "$*"
+}
+
+error() {
     printf '%s: %s\n' "$TAG" "$*" >&2
 }
 
@@ -20,14 +28,14 @@ write_one() {
     [ -e "$path" ] || return 0
 
     if [ ! -w "$path" ]; then
-        log "skip non-writable $path"
+        info "skip non-writable $path"
         return 0
     fi
 
-    if printf '%s\n' "$value" > "$path" 2>/dev/null; then
-        log "set $path=$value"
+    if { printf '%s\n' "$value" > "$path"; } 2>/dev/null; then
+        info "set $path=$value"
     else
-        log "failed to set $path=$value"
+        warn "failed to set $path=$value"
     fi
 }
 
@@ -49,13 +57,13 @@ check_amd_pstate() {
     driver="$(read_one /sys/devices/system/cpu/cpufreq/policy0/scaling_driver)"
 
     if [ "$status" = "active" ] && [ "$driver" = "amd-pstate-epp" ]; then
-        log "amd-pstate EPP active"
+        info "amd-pstate EPP active"
         return 0
     fi
 
-    log "amd-pstate EPP is not active"
-    log "status='$status' scaling_driver='$driver'"
-    log "add amd_pstate=active to the kernel command line and reboot"
+    warn "amd-pstate EPP is not active"
+    warn "status='$status' scaling_driver='$driver'"
+    warn "add amd_pstate=active to the kernel command line and reboot"
 }
 
 apply_cpu_boost_on() {
@@ -139,9 +147,9 @@ apply_qualcomm_wifi_powersave() {
             iface="${iface_path##*/}"
 
             if iw dev "$iface" set power_save on 2>/dev/null; then
-                log "enabled Wi-Fi power_save on $iface"
+                info "enabled Wi-Fi power_save on $iface"
             else
-                log "failed to enable Wi-Fi power_save on $iface"
+                warn "failed to enable Wi-Fi power_save on $iface"
             fi
 
             write_one auto "$iface_path/device/power/control"
@@ -152,26 +160,15 @@ apply_qualcomm_wifi_powersave() {
             [ -e "$phy_path" ] || continue
             phy="${phy_path##*/}"
             if iw phy "$phy" wowlan disable 2>/dev/null; then
-                log "disabled WoWLAN on $phy"
+                info "disabled WoWLAN on $phy"
             else
-                log "failed to disable WoWLAN on $phy"
+                warn "failed to disable WoWLAN on $phy"
             fi
         done
     else
-        log "iw not found; cannot set runtime Wi-Fi power_save or WoWLAN"
+        warn "iw not found; cannot set runtime Wi-Fi power_save or WoWLAN"
     fi
 
-    if command -v nmcli >/dev/null 2>&1; then
-        nmcli -t -f UUID,TYPE connection show 2>/dev/null | while IFS=: read -r uuid type; do
-            [ "$type" = "802-11-wireless" ] || continue
-            [ -n "$uuid" ] || continue
-            if nmcli connection modify "$uuid" 802-11-wireless.powersave 3 >/dev/null 2>&1; then
-                log "set NetworkManager Wi-Fi powersave=3 for $uuid"
-            else
-                log "failed to set NetworkManager Wi-Fi powersave for $uuid"
-            fi
-        done
-    fi
 }
 
 apply_network_wake_off() {
@@ -185,7 +182,7 @@ apply_network_wake_off() {
         [ -d "$iface_path/wireless" ] && continue
         if command -v ethtool >/dev/null 2>&1; then
             if ethtool -s "$iface" wol d >/dev/null 2>&1; then
-                log "disabled Wake-on-LAN on $iface"
+                info "disabled Wake-on-LAN on $iface"
             fi
         fi
     done
@@ -214,7 +211,7 @@ case "${1:-start}" in
         exit 0
         ;;
     *)
-        log "unknown action: $1"
+        error "unknown action: $1"
         exit 2
         ;;
 esac
