@@ -99,6 +99,10 @@ apply_display_polling_off() {
     write_one N /sys/module/drm_kms_helper/parameters/poll
 }
 
+apply_audio_power_save() {
+    write_one 1 /sys/module/snd_hda_intel/parameters/power_save
+}
+
 apply_nvme_apst() {
     write_one 100000 /sys/module/nvme_core/parameters/default_ps_max_latency_us
     write_glob auto /sys/class/nvme/nvme*/device/power/control
@@ -238,6 +242,7 @@ apply_all() {
     apply_pci_runtime_pm
     apply_amdgpu_extras
     apply_display_polling_off
+    apply_audio_power_save
     apply_nvme_apst
     apply_usb_autosuspend
     apply_bluetooth_adapter_pm

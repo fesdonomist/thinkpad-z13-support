@@ -13,6 +13,8 @@ USB autosuspend is enabled with a short delay for fixed internal non-HID
 devices. Root hubs, removable/external-port devices, and USB HID devices such as
 keyboards, mice, trackpads, and receivers are kept awake.
 
+HDA audio power saving is set to a 1 second idle timeout.
+
 The bundled `ppd.conf` maps PPD modes to:
 
 - `balanced` -> `z13-balanced`
