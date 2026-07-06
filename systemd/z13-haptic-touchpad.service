@@ -1,0 +1,11 @@
+[Unit]
+Description=Apply ThinkPad Z13 haptic touchpad settings
+After=systemd-udev-settle.service
+Wants=systemd-udev-settle.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/z13-tuned/bin/ehpsctl apply --config /etc/z13-tuned/ehps.config
+
+[Install]
+WantedBy=multi-user.target

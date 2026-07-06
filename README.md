@@ -13,6 +13,11 @@ The bundled `ppd.conf` maps battery PPD modes to:
 - `balanced` -> `z13-balanced`
 - `power-saver` -> `z13-power-saver`
 
+It also includes `ehpsctl`, a small replacement for the ELAN haptic touchpad
+settings loader. The installer builds it, writes a default
+`/etc/z13-tuned/ehps.config`, and enables `z13-haptic-touchpad.service` so the
+settings are applied on boot.
+
 Install:
 
 ```sh
@@ -20,4 +25,14 @@ run0 ./install.sh
 run0 systemctl restart tuned.service
 ```
 
-The installer writes to `/etc/tuned/profiles` and `/etc/tuned/ppd.conf`.
+Configure the haptic touchpad:
+
+```sh
+run0 ehpsctl set --click-force medium --feedback-state 4
+run0 ehpsctl set --post-button-force high --topzone-post-button on
+ehpsctl show
+```
+
+The installer writes to `/etc/tuned/profiles`, `/etc/tuned/ppd.conf`,
+`/etc/z13-tuned/ehps.config`, `/opt/z13-tuned/bin/ehpsctl`, and
+`/etc/systemd/system/z13-haptic-touchpad.service`.
