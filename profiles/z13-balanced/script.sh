@@ -1,0 +1,220 @@
+#!/bin/sh
+# ThinkPad Z13 Gen 1 AMD 6850U extras for TuneD.
+
+set -u
+
+TAG="z13-balanced"
+
+log() {
+    printf '%s: %s\n' "$TAG" "$*" >&2
+}
+
+read_one() {
+    [ -r "$1" ] && cat "$1" 2>/dev/null || true
+}
+
+write_one() {
+    value="$1"
+    path="$2"
+
+    [ -e "$path" ] || return 0
+
+    if [ ! -w "$path" ]; then
+        log "skip non-writable $path"
+        return 0
+    fi
+
+    if printf '%s\n' "$value" > "$path" 2>/dev/null; then
+        log "set $path=$value"
+    else
+        log "failed to set $path=$value"
+    fi
+}
+
+write_glob() {
+    value="$1"
+    shift
+
+    for pattern in "$@"; do
+        # Intentional glob expansion.
+        for path in $pattern; do
+            [ -e "$path" ] || continue
+            write_one "$value" "$path"
+        done
+    done
+}
+
+check_amd_pstate() {
+    status="$(read_one /sys/devices/system/cpu/amd_pstate/status)"
+    driver="$(read_one /sys/devices/system/cpu/cpufreq/policy0/scaling_driver)"
+
+    if [ "$status" = "active" ] && [ "$driver" = "amd-pstate-epp" ]; then
+        log "amd-pstate EPP active"
+        return 0
+    fi
+
+    log "amd-pstate EPP is not active"
+    log "status='$status' scaling_driver='$driver'"
+    log "add amd_pstate=active to the kernel command line and reboot"
+}
+
+apply_cpu_boost_on() {
+    write_one 1 /sys/devices/system/cpu/cpufreq/boost
+    write_glob 1 /sys/devices/system/cpu/cpufreq/policy*/boost
+}
+
+apply_aspm() {
+    write_one powersupersave /sys/module/pcie_aspm/parameters/policy
+}
+
+apply_pci_runtime_pm() {
+    write_glob auto /sys/bus/pci/devices/*/power/control
+}
+
+apply_amdgpu_extras() {
+    # This knob is AMD ABM/backlight reduction. Keep it off; it is visually
+    # distracting even though it saves panel power.
+    write_glob 0 /sys/class/drm/card*-eDP-*/amdgpu/panel_power_savings
+
+    write_one 0 /sys/module/amdgpu/parameters/dcdebugmask
+    write_one 0 /sys/module/amdgpu/parameters/abmlevel
+    write_one 1 /sys/module/amdgpu/parameters/aspm
+    write_one 1 /sys/module/amdgpu/parameters/bapm
+    write_one 1 /sys/module/amdgpu/parameters/dpm
+
+    write_glob auto /sys/class/drm/card*/device/power/control
+}
+
+apply_display_polling_off() {
+    write_one N /sys/module/drm_kms_helper/parameters/poll
+}
+
+apply_nvme_apst() {
+    write_one 100000 /sys/module/nvme_core/parameters/default_ps_max_latency_us
+    write_glob auto /sys/class/nvme/nvme*/device/power/control
+    write_glob auto /sys/block/nvme*n*/device/power/control
+}
+
+apply_usb_autosuspend_off() {
+    write_one -1 /sys/module/usbcore/parameters/autosuspend
+    write_glob on /sys/bus/usb/devices/*/power/control
+}
+
+apply_bluetooth_adapter_pm() {
+    write_one Y /sys/module/btusb/parameters/enable_autosuspend
+
+    for hci in /sys/class/bluetooth/hci*; do
+        [ -e "$hci" ] || continue
+        write_one auto "$hci/power/control"
+        write_one 2000 "$hci/power/autosuspend_delay_ms"
+        write_one disabled "$hci/power/wakeup"
+
+        backing="$(readlink -f "$hci/device" 2>/dev/null || true)"
+        [ -n "$backing" ] || continue
+        write_one auto "$backing/power/control"
+        write_one 2000 "$backing/power/autosuspend_delay_ms"
+        write_one disabled "$backing/power/wakeup"
+
+        controller="$(dirname "$backing")"
+        if [ -e "$controller/idVendor" ] && [ -e "$controller/idProduct" ]; then
+            write_one auto "$controller/power/control"
+            write_one 2000 "$controller/power/autosuspend_delay_ms"
+            write_one disabled "$controller/power/wakeup"
+        fi
+    done
+}
+
+apply_soft_watchdog_off() {
+    if command -v sysctl >/dev/null 2>&1; then
+        sysctl -q -w kernel.soft_watchdog=0 || true
+    else
+        write_one 0 /proc/sys/kernel/soft_watchdog
+    fi
+}
+
+apply_qualcomm_wifi_powersave() {
+    if command -v iw >/dev/null 2>&1; then
+        for iface_path in /sys/class/net/*; do
+            [ -d "$iface_path/wireless" ] || continue
+            iface="${iface_path##*/}"
+
+            if iw dev "$iface" set power_save on 2>/dev/null; then
+                log "enabled Wi-Fi power_save on $iface"
+            else
+                log "failed to enable Wi-Fi power_save on $iface"
+            fi
+
+            write_one auto "$iface_path/device/power/control"
+            write_one disabled "$iface_path/device/power/wakeup"
+        done
+
+        for phy_path in /sys/class/ieee80211/phy*; do
+            [ -e "$phy_path" ] || continue
+            phy="${phy_path##*/}"
+            if iw phy "$phy" wowlan disable 2>/dev/null; then
+                log "disabled WoWLAN on $phy"
+            else
+                log "failed to disable WoWLAN on $phy"
+            fi
+        done
+    else
+        log "iw not found; cannot set runtime Wi-Fi power_save or WoWLAN"
+    fi
+
+    if command -v nmcli >/dev/null 2>&1; then
+        nmcli -t -f UUID,TYPE connection show 2>/dev/null | while IFS=: read -r uuid type; do
+            [ "$type" = "802-11-wireless" ] || continue
+            [ -n "$uuid" ] || continue
+            if nmcli connection modify "$uuid" 802-11-wireless.powersave 3 >/dev/null 2>&1; then
+                log "set NetworkManager Wi-Fi powersave=3 for $uuid"
+            else
+                log "failed to set NetworkManager Wi-Fi powersave for $uuid"
+            fi
+        done
+    fi
+}
+
+apply_network_wake_off() {
+    for iface_path in /sys/class/net/*; do
+        [ -e "$iface_path" ] || continue
+        iface="${iface_path##*/}"
+        [ "$iface" = "lo" ] && continue
+
+        write_one disabled "$iface_path/device/power/wakeup"
+
+        [ -d "$iface_path/wireless" ] && continue
+        if command -v ethtool >/dev/null 2>&1; then
+            if ethtool -s "$iface" wol d >/dev/null 2>&1; then
+                log "disabled Wake-on-LAN on $iface"
+            fi
+        fi
+    done
+}
+
+apply_all() {
+    check_amd_pstate
+    apply_cpu_boost_on
+    apply_aspm
+    apply_pci_runtime_pm
+    apply_amdgpu_extras
+    apply_display_polling_off
+    apply_nvme_apst
+    apply_usb_autosuspend_off
+    apply_bluetooth_adapter_pm
+    apply_soft_watchdog_off
+    apply_qualcomm_wifi_powersave
+    apply_network_wake_off
+}
+
+case "${1:-start}" in
+    start|verify)
+        apply_all
+        ;;
+    stop)
+        exit 0
+        ;;
+    *)
+        log "unknown action: $1"
+        exit 2
+        ;;
+esac
