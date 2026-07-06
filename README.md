@@ -6,7 +6,12 @@ TuneD profiles for a ThinkPad Z13 Gen 1 AMD 6850U.
 - `z13-power-saver`: inherits `z13-balanced`, but sets EPP to `power`.
 
 AMDGPU ABM/backlight reduction is kept off with `panel_power_savings=0` and
-`amdgpu.abmlevel=0`.
+`amdgpu.abmlevel=0`. AMDGPU DPM is left dynamic, but biased to the battery
+state so the 680M iGPU is less eager to boost for light desktop work.
+
+USB autosuspend is enabled with a short delay for fixed internal non-HID
+devices. Root hubs, removable/external-port devices, and USB HID devices such as
+keyboards, mice, trackpads, and receivers are kept awake.
 
 The bundled `ppd.conf` maps PPD modes to:
 

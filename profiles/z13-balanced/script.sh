@@ -90,6 +90,8 @@ apply_amdgpu_extras() {
     write_one 1 /sys/module/amdgpu/parameters/bapm
     write_one 1 /sys/module/amdgpu/parameters/dpm
 
+    write_glob battery /sys/class/drm/card*/device/power_dpm_state
+    write_glob auto /sys/class/drm/card*/device/power_dpm_force_performance_level
     write_glob auto /sys/class/drm/card*/device/power/control
 }
 
@@ -103,9 +105,50 @@ apply_nvme_apst() {
     write_glob auto /sys/block/nvme*n*/device/power/control
 }
 
-apply_usb_autosuspend_off() {
-    write_one -1 /sys/module/usbcore/parameters/autosuspend
-    write_glob on /sys/bus/usb/devices/*/power/control
+usb_has_interface_class() {
+    device="$1"
+    class="$2"
+
+    for interface in "$device":*; do
+        [ -e "$interface/bInterfaceClass" ] || continue
+        [ "$(read_one "$interface/bInterfaceClass")" = "$class" ] && return 0
+    done
+
+    return 1
+}
+
+apply_usb_autosuspend() {
+    write_one 2 /sys/module/usbcore/parameters/autosuspend
+
+    for device in /sys/bus/usb/devices/*; do
+        [ -d "$device" ] || continue
+
+        name="${device##*/}"
+        control="$device/power/control"
+        [ -e "$control" ] || continue
+
+        # Keep root hubs and anything on external/removable ports awake.
+        case "$name" in
+            usb*)
+                write_one on "$control"
+                continue
+                ;;
+        esac
+
+        if [ "$(read_one "$device/removable")" = "removable" ]; then
+            write_one on "$control"
+            continue
+        fi
+
+        # Keep USB HID devices awake: keyboards, mice, trackpads, receivers.
+        if usb_has_interface_class "$device" 03; then
+            write_one on "$control"
+            continue
+        fi
+
+        write_one auto "$control"
+        write_one 2000 "$device/power/autosuspend_delay_ms"
+    done
 }
 
 apply_bluetooth_adapter_pm() {
@@ -196,7 +239,7 @@ apply_all() {
     apply_amdgpu_extras
     apply_display_polling_off
     apply_nvme_apst
-    apply_usb_autosuspend_off
+    apply_usb_autosuspend
     apply_bluetooth_adapter_pm
     apply_soft_watchdog_off
     apply_qualcomm_wifi_powersave
