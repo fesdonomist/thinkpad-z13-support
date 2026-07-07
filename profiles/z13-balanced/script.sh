@@ -114,31 +114,24 @@ apply_ryzenadj_policy() {
     case "$PROFILE_NAME" in
         z13-power-saver)
             set -- --power-saving \
-                --stapm-limit=9000 \
+                --stapm-limit=6000 \
                 --fast-limit=15000 \
-                --slow-limit=9000 \
-                --vrmsoc-current=7000 \
-                --vrmsocmax-current=15000 \
-                --vrm-current=15000
+                --slow-limit=6000 \
+                --apu-slow-limit=7500
             ;;
         z13-performance)
             set -- --max-performance \
                 --stapm-limit=30000 \
-                --fast-limit=35000 \
+                --fast-limit=40000 \
                 --slow-limit=30000 \
-                --vrmsoc-current=13000 \
-                --vrmsocmax-current=17000 \
-                --vrm-current=50000 \
-                --vrmmax-current=105000
+                --apu-slow-limit=30000
             ;;
         *)
             set -- --power-saving \
-                --stapm-limit=9000 \
+                --stapm-limit=8000 \
                 --fast-limit=15000 \
-                --slow-limit=9000 \
-                --vrmsoc-current=7000 \
-                --vrmsocmax-current=15000 \
-                --vrm-current=15000
+                --slow-limit=8000 \
+                --apu-slow-limit=8000 \
             ;;
     esac
 
@@ -259,13 +252,24 @@ apply_qualcomm_wifi_powersave() {
             [ -d "$iface_path/wireless" ] || continue
             iface="${iface_path##*/}"
 
-            if iw dev "$iface" set power_save on 2>/dev/null; then
-                info "enabled Wi-Fi power_save on $iface"
+            case "$PROFILE_NAME" in
+                z13-power-saver)
+                    wifi_power_save=on
+                    wifi_runtime_pm=auto
+                    ;;
+                *)
+                    wifi_power_save=off
+                    wifi_runtime_pm=on
+                    ;;
+            esac
+
+            if iw dev "$iface" set power_save "$wifi_power_save" 2>/dev/null; then
+                info "set Wi-Fi power_save $wifi_power_save on $iface"
             else
-                warn "failed to enable Wi-Fi power_save on $iface"
+                warn "failed to set Wi-Fi power_save $wifi_power_save on $iface"
             fi
 
-            write_one auto "$iface_path/device/power/control"
+            write_one "$wifi_runtime_pm" "$iface_path/device/power/control"
             write_one disabled "$iface_path/device/power/wakeup"
         done
 

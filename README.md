@@ -2,9 +2,9 @@
 
 TuneD profiles for a ThinkPad Z13 Gen 1 AMD 6850U.
 
-- `z13-balanced`: stock `powersave` plus Z13 extras, CPU boost on, EPP `balance_power|power`, RyzenAdj 9 W sustained / 15 W fast, 7 A sustained / 15 A peak SoC current, and 15 A sustained CPU current.
-- `z13-power-saver`: inherits `z13-balanced`, but sets EPP to `power`, RyzenAdj 9 W sustained / 15 W fast, 7 A sustained / 15 A peak SoC current, and 15 A sustained CPU current.
-- `z13-performance`: inherits `z13-balanced`, but sets EPP to `balance_performance|performance`, RyzenAdj 30 W sustained / 35 W fast, and restores higher CPU/SoC current limits.
+- `z13-balanced`: stock `powersave` plus Z13 extras, CPU boost on, EPP `balance_power|power`, RyzenAdj 8 W sustained / 15 W fast.
+- `z13-power-saver`: inherits `z13-balanced`, but sets EPP to `power`, RyzenAdj 6 W sustained / 15 W fast.
+- `z13-performance`: inherits `z13-balanced`, but sets EPP to `balance_performance|performance`, RyzenAdj 30 W sustained / 35 W fast.
 
 AMDGPU ABM/backlight reduction is kept off with `panel_power_savings=0`.
 The installer also builds a systemd-stub UKI addon at
@@ -38,6 +38,10 @@ keyboards, mice, trackpads, and receivers are kept awake.
 
 HDA audio power saving is set to a 1 second idle timeout.
 
+Wi-Fi power save is enabled only in `z13-power-saver`. `z13-balanced` and
+`z13-performance` keep Wi-Fi power save off and force the wireless PCI function
+awake for better link quality. Wake-on-Wi-Fi remains disabled.
+
 The bundled `ppd.conf` maps PPD modes to:
 
 On AC power:
@@ -63,14 +67,7 @@ On live installs, the installer also clones and builds RyzenAdj into
 with `RYZENADJ_REPO` and `RYZENADJ_REF`.
 
 When RyzenAdj is installed, the TuneD profile script applies profile-specific
-APU policy on activation:
-
-- `z13-balanced`: `--power-saving`, 9 W STAPM/slow PPT, 15 W fast PPT, 7 A sustained / 15 A peak SoC current, 15 A sustained CPU current.
-- `z13-power-saver`: `--power-saving`, 9 W STAPM/slow PPT, 15 W fast PPT, 7 A sustained / 15 A peak SoC current, 15 A sustained CPU current.
-- `z13-performance`: `--max-performance`, 30 W slow PPT, 35 W fast PPT, 13 A sustained / 17 A peak SoC current, 50 A sustained / 105 A peak CPU current.
-
-The profiles do not set RyzenAdj temperature limits or STAPM/slow time
-constants; those stay at firmware defaults.
+APU policy on activation.
 
 Set `RYZENADJ=/path/to/ryzenadj` if the binary is installed somewhere else.
 
