@@ -141,11 +141,18 @@ apply_pci_runtime_pm() {
 }
 
 apply_amdgpu_extras() {
-    # This knob is AMD ABM/backlight reduction. Keep it off; it is visually
-    # distracting even though it saves panel power.
-    write_glob 0 /sys/class/drm/card*-eDP-*/amdgpu/panel_power_savings
-
     write_glob auto /sys/class/drm/card*/device/power/control
+    case "$PROFILE_NAME" in
+        z13-power-saver)
+            write_glob low /sys/class/drm/card*/device/power_dpm_force_performance_level
+            ;;
+        z13-performance)
+            write_glob auto /sys/class/drm/card*/device/power_dpm_force_performance_level
+            ;;
+        *)
+            write_glob low /sys/class/drm/card*/device/power_dpm_force_performance_level
+            ;;
+    esac
 }
 
 apply_display_polling_off() {
