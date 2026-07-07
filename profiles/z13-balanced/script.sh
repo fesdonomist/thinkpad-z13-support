@@ -258,9 +258,17 @@ apply_qualcomm_wifi_powersave() {
                     wifi_power_save=on
                     wifi_runtime_pm=auto
                     ;;
-                *)
+                z13-balanced)
+                    wifi_power_save=on
+                    wifi_runtime_pm=auto
+                    ;;
+                z13-performance)
                     wifi_power_save=off
                     wifi_runtime_pm=on
+                    ;;
+                *)
+                    wifi_power_save=on
+                    wifi_runtime_pm=auto
                     ;;
             esac
 
