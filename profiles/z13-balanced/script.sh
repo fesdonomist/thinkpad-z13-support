@@ -114,24 +114,18 @@ apply_ryzenadj_policy() {
     case "$PROFILE_NAME" in
         z13-power-saver)
             set -- --power-saving \
-                --stapm-limit=6000 \
                 --fast-limit=15000 \
-                --slow-limit=6000 \
-                --apu-slow-limit=6000
+                --slow-limit=6000
             ;;
         z13-performance)
             set -- --max-performance \
-                --stapm-limit=30000 \
                 --fast-limit=40000 \
-                --slow-limit=30000 \
-                --apu-slow-limit=30000
+                --slow-limit=30000
             ;;
         *)
             set -- --power-saving \
-                --stapm-limit=8000 \
                 --fast-limit=15000 \
-                --slow-limit=8000 \
-                --apu-slow-limit=8000 \
+                --slow-limit=8000
             ;;
     esac
 
