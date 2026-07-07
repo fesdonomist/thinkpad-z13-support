@@ -15,7 +15,6 @@ apply even when KDE Linux downloads prebuilt UKIs. The addon carries an initrd
 fragment with `/etc/modprobe.d/z13-amdgpu.conf` for AMDGPU module options:
 
 - `abmlevel=0`
-- `dcdebugmask=0`
 - `aspm=1`
 - `bapm=1`
 - `dpm=1`
@@ -26,6 +25,8 @@ The addon command line only contains options that are not available through
 - `pcie_aspm=force`
 - `pcie_aspm.policy=powersupersave`
 - `iomem=relaxed`
+- `amdgpu.dcdebugmask=0`
+- `amdgpu.dcfeaturemask=0x28b`
 
 Reboot after installing for the addon parameters to take effect. If Secure Boot
 is enabled, the addon must be signed with a trusted key. AMDGPU
@@ -33,6 +34,12 @@ is enabled, the addon must be signed with a trusted key. AMDGPU
 parameter, and it did not affect iGPU clock behavior on this machine.
 `iomem=relaxed` is included so RyzenAdj can attempt its `/dev/mem` fallback on
 kernels that permit relaxed I/O memory access.
+`amdgpu.dcdebugmask=0` is intentionally a kernel command-line override, not a
+`modprobe.d` option, so it can append after KDE Linux's shipped
+`amdgpu.dcdebugmask=0x10` and stop disabling AMDGPU PSR on this 680M machine.
+`amdgpu.dcfeaturemask=0x28b` preserves the currently enabled `0x2` DC feature
+bit, adds `DC_FBC_MASK` (`0x1`), `DC_PSR_MASK` (`0x8`),
+`DC_PSR_ALLOW_SMU_OPT` (`0x80`), and `DC_REPLAY_MASK` (`0x200`).
 
 USB autosuspend is enabled with a short delay for fixed internal non-HID
 devices. Root hubs, removable/external-port devices, and USB HID devices such as

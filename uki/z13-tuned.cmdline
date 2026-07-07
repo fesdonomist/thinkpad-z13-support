@@ -1,1 +1,1 @@
-pcie_aspm=force pcie_aspm.policy=powersupersave iomem=relaxed
+pcie_aspm=force pcie_aspm.policy=powersupersave iomem=relaxed amdgpu.dcdebugmask=0 amdgpu.dcfeaturemask=0x28b
