@@ -117,7 +117,7 @@ apply_ryzenadj_policy() {
                 --stapm-limit=6000 \
                 --fast-limit=15000 \
                 --slow-limit=6000 \
-                --apu-slow-limit=7500
+                --apu-slow-limit=6000
             ;;
         z13-performance)
             set -- --max-performance \
