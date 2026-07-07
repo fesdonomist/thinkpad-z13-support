@@ -1,3 +1,5 @@
+# WARNING! The code is predominantly AI slop, and this pokes at hardware so YMMV.
+
 # z13-tuned
 
 TuneD profiles for a ThinkPad Z13 Gen 1 AMD 6850U.
