@@ -3,7 +3,21 @@
 
 set -u
 
-TAG="z13-balanced"
+PROFILE_NAME="${Z13_TUNED_PROFILE:-${0%/*}}"
+PROFILE_NAME="${PROFILE_NAME##*/}"
+case "$PROFILE_NAME" in
+    z13-balanced|z13-power-saver|z13-performance)
+        ;;
+    balanced|power-saver|performance)
+        PROFILE_NAME="z13-$PROFILE_NAME"
+        ;;
+    *)
+        PROFILE_NAME="z13-balanced"
+        ;;
+esac
+
+TAG="$PROFILE_NAME"
+RYZENADJ="${RYZENADJ:-/opt/z13-tuned/bin/ryzenadj}"
 
 info() {
     printf '%s: %s\n' "$TAG" "$*"
@@ -71,8 +85,68 @@ apply_cpu_boost_on() {
     write_glob 1 /sys/devices/system/cpu/cpufreq/policy*/boost
 }
 
-apply_aspm() {
-    write_one powersupersave /sys/module/pcie_aspm/parameters/policy
+ensure_dev_mem() {
+    if [ -e /dev/mem ]; then
+        return 0
+    fi
+
+    if ! command -v mknod >/dev/null 2>&1; then
+        warn "skip /dev/mem creation: mknod not found"
+        return 0
+    fi
+
+    if mknod /dev/mem c 1 1 2>/dev/null; then
+        chmod 600 /dev/mem 2>/dev/null || true
+        info "created /dev/mem for ryzenadj fallback"
+    else
+        warn "failed to create /dev/mem for ryzenadj fallback"
+    fi
+}
+
+apply_ryzenadj_policy() {
+    if [ ! -x "$RYZENADJ" ]; then
+        info "skip ryzenadj: $RYZENADJ not executable"
+        return 0
+    fi
+
+    ensure_dev_mem
+
+    case "$PROFILE_NAME" in
+        z13-power-saver)
+            set -- --power-saving \
+                --stapm-limit=9000 \
+                --fast-limit=15000 \
+                --slow-limit=9000 \
+                --vrmsoc-current=7000 \
+                --vrmsocmax-current=15000 \
+                --vrm-current=15000
+            ;;
+        z13-performance)
+            set -- --max-performance \
+                --stapm-limit=30000 \
+                --fast-limit=35000 \
+                --slow-limit=30000 \
+                --vrmsoc-current=13000 \
+                --vrmsocmax-current=17000 \
+                --vrm-current=50000 \
+                --vrmmax-current=105000
+            ;;
+        *)
+            set -- --power-saving \
+                --stapm-limit=9000 \
+                --fast-limit=15000 \
+                --slow-limit=9000 \
+                --vrmsoc-current=7000 \
+                --vrmsocmax-current=15000 \
+                --vrm-current=15000
+            ;;
+    esac
+
+    if "$RYZENADJ" "$@" >/dev/null 2>&1; then
+        info "applied ryzenadj policy for $PROFILE_NAME"
+    else
+        warn "failed to apply ryzenadj policy for $PROFILE_NAME"
+    fi
 }
 
 apply_pci_runtime_pm() {
@@ -84,14 +158,6 @@ apply_amdgpu_extras() {
     # distracting even though it saves panel power.
     write_glob 0 /sys/class/drm/card*-eDP-*/amdgpu/panel_power_savings
 
-    write_one 0 /sys/module/amdgpu/parameters/dcdebugmask
-    write_one 0 /sys/module/amdgpu/parameters/abmlevel
-    write_one 1 /sys/module/amdgpu/parameters/aspm
-    write_one 1 /sys/module/amdgpu/parameters/bapm
-    write_one 1 /sys/module/amdgpu/parameters/dpm
-
-    write_glob battery /sys/class/drm/card*/device/power_dpm_state
-    write_glob auto /sys/class/drm/card*/device/power_dpm_force_performance_level
     write_glob auto /sys/class/drm/card*/device/power/control
 }
 
@@ -238,7 +304,7 @@ apply_network_wake_off() {
 apply_all() {
     check_amd_pstate
     apply_cpu_boost_on
-    apply_aspm
+    apply_ryzenadj_policy
     apply_pci_runtime_pm
     apply_amdgpu_extras
     apply_display_polling_off
