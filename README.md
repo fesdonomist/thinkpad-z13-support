@@ -40,6 +40,14 @@ HDA audio power saving is set to a 1 second idle timeout.
 
 The bundled `ppd.conf` maps PPD modes to:
 
+On AC power:
+
+- `balanced` -> `z13-ac-balanced` -> `z13-performance`
+- `power-saver` -> `z13-ac-power-saver` -> `z13-performance`
+- `performance` -> `z13-performance`
+
+On battery:
+
 - `balanced` -> `z13-balanced`
 - `power-saver` -> `z13-power-saver`
 - `performance` -> `z13-performance`

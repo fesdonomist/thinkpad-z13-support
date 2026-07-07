@@ -76,6 +76,10 @@ install -Dm644 "$SRC_DIR/profiles/z13-performance/tuned.conf" \
     "$PROFILE_DIR/z13-performance/tuned.conf"
 install -Dm755 "$SRC_DIR/profiles/z13-performance/script.sh" \
     "$PROFILE_DIR/z13-performance/script.sh"
+install -Dm644 "$SRC_DIR/profiles/z13-ac-balanced/tuned.conf" \
+    "$PROFILE_DIR/z13-ac-balanced/tuned.conf"
+install -Dm644 "$SRC_DIR/profiles/z13-ac-power-saver/tuned.conf" \
+    "$PROFILE_DIR/z13-ac-power-saver/tuned.conf"
 install -Dm644 "$SRC_DIR/ppd.conf" "$PPD_CONF"
 
 mkdir -p "$BUILD_DIR"
@@ -110,7 +114,7 @@ if command -v systemctl >/dev/null 2>&1 && [ "$ROOT" = "/" ]; then
     systemctl enable z13-haptic-touchpad.service
 fi
 
-printf '%s\n' "Installed z13-balanced, z13-power-saver, and z13-performance TuneD profiles."
+printf '%s\n' "Installed Z13 TuneD profiles and AC performance aliases."
 printf '%s\n' "Installed ehpsctl and z13-haptic-touchpad.service."
 if [ -x "$BIN_DIR/ryzenadj" ]; then
     printf '%s\n' "Installed ryzenadj."
