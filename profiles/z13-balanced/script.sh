@@ -142,17 +142,7 @@ apply_pci_runtime_pm() {
 
 apply_amdgpu_extras() {
     write_glob auto /sys/class/drm/card*/device/power/control
-    case "$PROFILE_NAME" in
-        z13-power-saver)
-            write_glob low /sys/class/drm/card*/device/power_dpm_force_performance_level
-            ;;
-        z13-performance)
-            write_glob auto /sys/class/drm/card*/device/power_dpm_force_performance_level
-            ;;
-        *)
-            write_glob low /sys/class/drm/card*/device/power_dpm_force_performance_level
-            ;;
-    esac
+    write_glob auto /sys/class/drm/card*/device/power_dpm_force_performance_level
 }
 
 apply_display_polling_off() {
