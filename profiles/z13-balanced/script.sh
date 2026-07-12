@@ -17,7 +17,6 @@ case "$PROFILE_NAME" in
 esac
 
 TAG="$PROFILE_NAME"
-RYZENADJ="${RYZENADJ:-/opt/z13-tuned/bin/ryzenadj}"
 
 info() {
     printf '%s: %s\n' "$TAG" "$*"
@@ -83,57 +82,6 @@ check_amd_pstate() {
 apply_cpu_boost_on() {
     write_one 1 /sys/devices/system/cpu/cpufreq/boost
     write_glob 1 /sys/devices/system/cpu/cpufreq/policy*/boost
-}
-
-ensure_dev_mem() {
-    if [ -e /dev/mem ]; then
-        return 0
-    fi
-
-    if ! command -v mknod >/dev/null 2>&1; then
-        warn "skip /dev/mem creation: mknod not found"
-        return 0
-    fi
-
-    if mknod /dev/mem c 1 1 2>/dev/null; then
-        chmod 600 /dev/mem 2>/dev/null || true
-        info "created /dev/mem for ryzenadj fallback"
-    else
-        warn "failed to create /dev/mem for ryzenadj fallback"
-    fi
-}
-
-apply_ryzenadj_policy() {
-    if [ ! -x "$RYZENADJ" ]; then
-        info "skip ryzenadj: $RYZENADJ not executable"
-        return 0
-    fi
-
-    ensure_dev_mem
-
-    case "$PROFILE_NAME" in
-        z13-power-saver)
-            set -- --power-saving \
-                --fast-limit=15000 \
-                --slow-limit=6000
-            ;;
-        z13-performance)
-            set -- --max-performance \
-                --fast-limit=40000 \
-                --slow-limit=30000
-            ;;
-        *)
-            set -- --power-saving \
-                --fast-limit=15000 \
-                --slow-limit=8000
-            ;;
-    esac
-
-    if "$RYZENADJ" "$@" >/dev/null 2>&1; then
-        info "applied ryzenadj policy for $PROFILE_NAME"
-    else
-        warn "failed to apply ryzenadj policy for $PROFILE_NAME"
-    fi
 }
 
 apply_pci_runtime_pm() {
@@ -307,7 +255,6 @@ apply_network_wake_off() {
 apply_all() {
     check_amd_pstate
     apply_cpu_boost_on
-    apply_ryzenadj_policy
     apply_pci_runtime_pm
     apply_amdgpu_extras
     apply_display_polling_off

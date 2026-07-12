@@ -4,11 +4,12 @@
 
 TuneD profiles for a ThinkPad Z13 Gen 1 AMD 6850U.
 
-- `z13-balanced`: stock `powersave` plus Z13 extras, CPU boost on, EPP `balance_power|power`, RyzenAdj 8 W sustained / 15 W fast.
-- `z13-power-saver`: inherits `z13-balanced`, but sets EPP to `power`, RyzenAdj 6 W sustained / 15 W fast.
-- `z13-performance`: inherits `z13-balanced`, but sets EPP to `balance_performance|performance`, RyzenAdj 30 W sustained / 35 W fast.
+- `z13-balanced`: stock `powersave` plus Z13 extras, CPU boost on, EPP `balance_power|power`, and ACPI `low-power`.
+- `z13-power-saver`: inherits `z13-balanced`, sets EPP to `power`, and ACPI `low-power`.
+- `z13-performance`: inherits `z13-balanced`, sets EPP to `balance_performance|performance`, and ACPI `performance`.
 
 AMDGPU ABM/backlight reduction is kept off with `panel_power_savings=0`.
+AMDGPU's forced DPM performance level is left at `auto` in every profile.
 The installer also builds a systemd-stub UKI addon at
 `/boot/loader/addons/z13-tuned.addon.efi` so early kernel/module parameters
 apply even when KDE Linux downloads prebuilt UKIs. The addon carries an initrd
@@ -22,9 +23,7 @@ fragment with `/etc/modprobe.d/z13-amdgpu.conf` for AMDGPU module options:
 The addon command line only contains options that are not available through
 `modprobe.d`:
 
-- `pcie_aspm=force`
 - `pcie_aspm.policy=powersupersave`
-- `iomem=relaxed`
 - `amdgpu.dcdebugmask=0`
 - `amdgpu.dcfeaturemask=0x28b`
 
@@ -32,8 +31,6 @@ Reboot after installing for the addon parameters to take effect. If Secure Boot
 is enabled, the addon must be signed with a trusted key. AMDGPU
 `power_dpm_state` is a runtime sysfs setting, not a kernel command-line
 parameter, and it did not affect iGPU clock behavior on this machine.
-`iomem=relaxed` is included so RyzenAdj can attempt its `/dev/mem` fallback on
-kernels that permit relaxed I/O memory access.
 `amdgpu.dcdebugmask=0` is intentionally a kernel command-line override, not a
 `modprobe.d` option, so it can append after KDE Linux's shipped
 `amdgpu.dcdebugmask=0x10` and stop disabling AMDGPU PSR on this 680M machine.
@@ -70,15 +67,9 @@ settings loader. The installer builds it, writes a default
 `/etc/z13-tuned/ehps.config`, and enables `z13-haptic-touchpad.service` so the
 settings are applied on boot.
 
-On live installs, the installer also clones and builds RyzenAdj into
-`/opt/z13-tuned/bin/ryzenadj`. Set `INSTALL_RYZENADJ=0` to skip it, or
-`INSTALL_RYZENADJ=1` to force it during staged installs. Override the source
-with `RYZENADJ_REPO` and `RYZENADJ_REF`.
-
-When RyzenAdj is installed, the TuneD profile script applies profile-specific
-APU policy on activation.
-
-Set `RYZENADJ=/path/to/ryzenadj` if the binary is installed somewhere else.
+Package power limits remain under firmware control through the ACPI platform
+profile. The installer removes binaries installed by older versions of this
+repository and does not use RyzenAdj or access the SMU directly.
 
 Install:
 
