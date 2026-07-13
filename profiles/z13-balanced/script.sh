@@ -119,6 +119,31 @@ usb_has_interface_class() {
     return 1
 }
 
+keep_fingerprint_reader_awake() {
+    device="$1"
+
+    [ "$(read_one "$device/idVendor")" = "06cb" ] || return 1
+    [ "$(read_one "$device/idProduct")" = "0123" ] || return 1
+
+    write_one on "$device/power/control"
+    write_one -1 "$device/power/autosuspend_delay_ms"
+    write_one disabled "$device/power/wakeup"
+
+    parent="$(readlink -f "$device" 2>/dev/null || true)"
+    while [ -n "$parent" ] && [ "$parent" != "/" ]; do
+        case "${parent##*/}" in
+            ????\:??\:??.?)
+                write_one on "$parent/power/control"
+                break
+                ;;
+        esac
+        parent="${parent%/*}"
+    done
+
+    info "disabled autosuspend for fingerprint reader 06cb:0123"
+    return 0
+}
+
 apply_usb_autosuspend() {
     write_one 2 /sys/module/usbcore/parameters/autosuspend
 
@@ -128,6 +153,10 @@ apply_usb_autosuspend() {
         name="${device##*/}"
         control="$device/power/control"
         [ -e "$control" ] || continue
+
+        if keep_fingerprint_reader_awake "$device"; then
+            continue
+        fi
 
         # Keep root hubs and anything on external/removable ports awake.
         case "$name" in

@@ -40,7 +40,10 @@ bit, adds `DC_FBC_MASK` (`0x1`), `DC_PSR_MASK` (`0x8`),
 
 USB autosuspend is enabled with a short delay for fixed internal non-HID
 devices. Root hubs, removable/external-port devices, and USB HID devices such as
-keyboards, mice, trackpads, and receivers are kept awake.
+keyboards, mice, trackpads, and receivers are kept awake. The internal
+Synaptics `06cb:0123` fingerprint reader and its xHCI controller are also kept
+out of runtime suspend. The reader is a USB device and has no independent PCIe
+ASPM setting.
 
 HDA audio power saving is set to a 1 second idle timeout.
 
